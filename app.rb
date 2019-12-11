@@ -21,8 +21,10 @@ namespace '/api' do
 	# Gives back current user's account information as JSON
 	# EXCLUDE their password from the JSON
 	get "/my_account" do
-		placeholder
+		api_authenticate!
+			halt 200, current_user.to_json(exclude:[:password])
 	end
+
 
 	# Make sure they are signed in
 	# Gives back JSON array representing every
@@ -30,7 +32,9 @@ namespace '/api' do
 	# EXCLUDE: video_url
 	# INCLUDE: result of thumbnail method
 	get "/videos" do
-		placeholder
+		api_authenticate!
+		v = Video.all 
+		halt 200,v.to_json(exclude:[:video_url],methods:[:thumbnail])
 	end
 
 	# Make sure they are signed in
@@ -40,7 +44,18 @@ namespace '/api' do
 	# Authorization: only pro users or admins
 	# 404 if not found
 	get "/videos/:id" do
-		placeholder
+		api_authenticate!
+			v = Video.get(params["id"])
+			if (v == nil)
+					halt 404, {message: "Not Found"}.to_json			
+			else
+				if (v.pro == true && current_user.admin? || current_user.pro_user?)
+					halt 200,v.to_json(methods:[:thumbnail,:embed_code])
+				else
+					halt 401,{message: "Not authorized"}.to_json
+				end
+			end
+			
 	end
 
 	# Creates a video from the parameters provided
@@ -50,7 +65,20 @@ namespace '/api' do
 	# If missing required parameters, give back status 422 - Unprocessable
 	# Authorization: only admins
 	post "/videos" do
-		placeholder
+		api_authenticate!
+		api_admin_only! 
+		
+		if current_user.admin? && params["title"] && params["video_url"] && params["description"]
+			v = Video.new
+			v.title = params["title"]
+			v.description = params["description"]
+			v.video_url = params["video_url"]
+			v.pro = true if params["pro"] == "on"
+			v.save
+			halt 201,v.to_json
+		else
+			halt 422,{message: "Unprocessable"}.to_json
+		end
 	end
 
 	# Updates the video with the provided ID
@@ -59,14 +87,44 @@ namespace '/api' do
 	# 404 if not found
 	# Authorization: only admins
 	patch "/videos/:id" do
-		placeholder
+		api_authenticate!
+			api_admin_only!
+				if current_user.admin?
+					v = Video.get(params["id"])
+					if(params["title"])
+						v.title = params["title"]
+					end
+					if params["description"] 
+						v.description = params["description"]
+					end
+					
+					if params["video_url"]
+						v.video_url = params["video_url"]
+					end 
+					if params["pro"]
+						v.pro = true if params["pro"] == "on"
+					end
+					v.save
+					halt 200,v.to_json
+				else
+					halt 404,{Message: "not found"}.to_json
+				end
 	end
 
 	# Deletes the video with the provided ID
 	# 404 if not found
 	# Authorization: only admins
 	delete "/videos/:id" do
-		placeholder
+		api_authenticate!
+		api_admin_only!
+		v = Video.get(params["id"])
+		if(v != nil)
+			v.destroy
+			halt 200,{message: " Video destryed"}.to_json
+		else
+			halt 404,{message: "Video not found"}.to_json
+		end
+		
 	end
 end
 
