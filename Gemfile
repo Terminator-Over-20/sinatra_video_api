@@ -5,7 +5,7 @@ gem 'data_mapper'
 gem 'stripe'
 gem 'jwt'
 gem 'sinatra-namespace'
-gem 'activesupport' , '~> 5.0', '< 6.0'
+gem 'activesupport' , '~> 6.1'
 
 group :development do
    gem 'sqlite3', '~> 1.3', '< 1.4'
